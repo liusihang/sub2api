@@ -39,14 +39,15 @@ func (r *CompositeRouteResolver) Resolve(ctx context.Context, groupID int64, mod
 				upstreamModel = model
 			}
 			return CompositeRouteDecision{
-				Matched:        true,
-				Source:         CompositeRouteSourceExplicit,
-				GroupID:        groupID,
-				PublicModel:    model,
-				TargetPlatform: route.TargetPlatform,
-				UpstreamModel:  upstreamModel,
-				Endpoint:       endpoint,
-				Route:          &route,
+				Matched:               true,
+				Source:                CompositeRouteSourceExplicit,
+				GroupID:               groupID,
+				PublicModel:           model,
+				TargetPlatform:        route.TargetPlatform,
+				UpstreamModel:         upstreamModel,
+				Endpoint:              endpoint,
+				BillingRateMultiplier: route.BillingRateMultiplier,
+				Route:                 &route,
 			}, nil
 		}
 	}

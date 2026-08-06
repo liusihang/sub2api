@@ -427,6 +427,53 @@ func TestOpenAIGatewayServiceRecordUsage_UsesUserSpecificGroupRate(t *testing.T)
 	require.Equal(t, 1, userRepo.deductCalls)
 }
 
+func TestOpenAIGatewayServiceRecordUsage_CompositeRouteMultiplierOverridesGroupDefault(t *testing.T) {
+	groupID := int64(12)
+	routeRate := 0.4
+	usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
+	svc := newOpenAIRecordUsageServiceForTest(
+		usageRepo,
+		&openAIRecordUsageUserRepoStub{},
+		&openAIRecordUsageSubRepoStub{},
+		nil,
+	)
+	ctx := WithCompositeRouteDecision(context.Background(), CompositeRouteDecision{
+		Matched:               true,
+		Source:                CompositeRouteSourceExplicit,
+		PublicModel:           "public-gpt",
+		TargetPlatform:        PlatformOpenAI,
+		UpstreamModel:         "gpt-5.1",
+		BillingRateMultiplier: &routeRate,
+	})
+
+	err := svc.RecordUsage(ctx, &OpenAIRecordUsageInput{
+		Result: &OpenAIForwardResult{
+			RequestID: "resp_composite_route_rate",
+			Usage: OpenAIUsage{
+				InputTokens:  15,
+				OutputTokens: 4,
+			},
+			Model:    "gpt-5.1",
+			Duration: time.Second,
+		},
+		APIKey: &APIKey{
+			ID:      1002,
+			GroupID: i64p(groupID),
+			Group: &Group{
+				ID:             groupID,
+				Platform:       PlatformComposite,
+				RateMultiplier: 0.13,
+			},
+		},
+		User:    &User{ID: 2002},
+		Account: &Account{ID: 3002, Platform: PlatformOpenAI},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, usageRepo.lastLog)
+	require.InDelta(t, 0.4, usageRepo.lastLog.RateMultiplier, 1e-12)
+}
+
 func TestOpenAIGatewayServiceRecordUsage_PeakRateAffectsTokenModeImageOutputTokens(t *testing.T) {
 	groupID := int64(14)
 	groupRate := 1.0

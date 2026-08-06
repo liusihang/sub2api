@@ -37,6 +37,8 @@ const (
 	FieldPriority = "priority"
 	// FieldEnabled holds the string denoting the enabled field in the database.
 	FieldEnabled = "enabled"
+	// FieldBillingRateMultiplier holds the string denoting the billing_rate_multiplier field in the database.
+	FieldBillingRateMultiplier = "billing_rate_multiplier"
 	// FieldNotes holds the string denoting the notes field in the database.
 	FieldNotes = "notes"
 	// EdgeGroup holds the string denoting the group edge name in mutations.
@@ -66,6 +68,7 @@ var Columns = []string{
 	FieldEndpoint,
 	FieldPriority,
 	FieldEnabled,
+	FieldBillingRateMultiplier,
 	FieldNotes,
 }
 
@@ -178,6 +181,11 @@ func ByPriority(opts ...sql.OrderTermOption) OrderOption {
 // ByEnabled orders the results by the enabled field.
 func ByEnabled(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldEnabled, opts...).ToFunc()
+}
+
+// ByBillingRateMultiplier orders the results by the billing_rate_multiplier field.
+func ByBillingRateMultiplier(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBillingRateMultiplier, opts...).ToFunc()
 }
 
 // ByNotes orders the results by the notes field.

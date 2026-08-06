@@ -110,6 +110,11 @@ func Enabled(v bool) predicate.CompositeModelRoute {
 	return predicate.CompositeModelRoute(sql.FieldEQ(FieldEnabled, v))
 }
 
+// BillingRateMultiplier applies equality check predicate on the "billing_rate_multiplier" field. It's identical to BillingRateMultiplierEQ.
+func BillingRateMultiplier(v float64) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldEQ(FieldBillingRateMultiplier, v))
+}
+
 // Notes applies equality check predicate on the "notes" field. It's identical to NotesEQ.
 func Notes(v string) predicate.CompositeModelRoute {
 	return predicate.CompositeModelRoute(sql.FieldEQ(FieldNotes, v))
@@ -638,6 +643,56 @@ func EnabledEQ(v bool) predicate.CompositeModelRoute {
 // EnabledNEQ applies the NEQ predicate on the "enabled" field.
 func EnabledNEQ(v bool) predicate.CompositeModelRoute {
 	return predicate.CompositeModelRoute(sql.FieldNEQ(FieldEnabled, v))
+}
+
+// BillingRateMultiplierEQ applies the EQ predicate on the "billing_rate_multiplier" field.
+func BillingRateMultiplierEQ(v float64) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldEQ(FieldBillingRateMultiplier, v))
+}
+
+// BillingRateMultiplierNEQ applies the NEQ predicate on the "billing_rate_multiplier" field.
+func BillingRateMultiplierNEQ(v float64) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldNEQ(FieldBillingRateMultiplier, v))
+}
+
+// BillingRateMultiplierIn applies the In predicate on the "billing_rate_multiplier" field.
+func BillingRateMultiplierIn(vs ...float64) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldIn(FieldBillingRateMultiplier, vs...))
+}
+
+// BillingRateMultiplierNotIn applies the NotIn predicate on the "billing_rate_multiplier" field.
+func BillingRateMultiplierNotIn(vs ...float64) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldNotIn(FieldBillingRateMultiplier, vs...))
+}
+
+// BillingRateMultiplierGT applies the GT predicate on the "billing_rate_multiplier" field.
+func BillingRateMultiplierGT(v float64) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldGT(FieldBillingRateMultiplier, v))
+}
+
+// BillingRateMultiplierGTE applies the GTE predicate on the "billing_rate_multiplier" field.
+func BillingRateMultiplierGTE(v float64) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldGTE(FieldBillingRateMultiplier, v))
+}
+
+// BillingRateMultiplierLT applies the LT predicate on the "billing_rate_multiplier" field.
+func BillingRateMultiplierLT(v float64) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldLT(FieldBillingRateMultiplier, v))
+}
+
+// BillingRateMultiplierLTE applies the LTE predicate on the "billing_rate_multiplier" field.
+func BillingRateMultiplierLTE(v float64) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldLTE(FieldBillingRateMultiplier, v))
+}
+
+// BillingRateMultiplierIsNil applies the IsNil predicate on the "billing_rate_multiplier" field.
+func BillingRateMultiplierIsNil() predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldIsNull(FieldBillingRateMultiplier))
+}
+
+// BillingRateMultiplierNotNil applies the NotNil predicate on the "billing_rate_multiplier" field.
+func BillingRateMultiplierNotNil() predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldNotNull(FieldBillingRateMultiplier))
 }
 
 // NotesEQ applies the EQ predicate on the "notes" field.

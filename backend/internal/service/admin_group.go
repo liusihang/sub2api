@@ -215,16 +215,20 @@ func compositeRouteFromInput(groupID int64, input CompositeRouteInput) (*Composi
 	if input.Priority == 0 {
 		input.Priority = 100
 	}
+	if input.BillingRateMultiplier != nil && *input.BillingRateMultiplier < 0 {
+		return nil, fmt.Errorf("billing_rate_multiplier must be non-negative")
+	}
 	return &CompositeModelRoute{
-		GroupID:        groupID,
-		PublicModel:    input.PublicModel,
-		MatchType:      input.MatchType,
-		TargetPlatform: input.TargetPlatform,
-		UpstreamModel:  input.UpstreamModel,
-		Endpoint:       input.Endpoint,
-		Priority:       input.Priority,
-		Enabled:        input.Enabled,
-		Notes:          input.Notes,
+		GroupID:               groupID,
+		PublicModel:           input.PublicModel,
+		MatchType:             input.MatchType,
+		TargetPlatform:        input.TargetPlatform,
+		UpstreamModel:         input.UpstreamModel,
+		Endpoint:              input.Endpoint,
+		Priority:              input.Priority,
+		Enabled:               input.Enabled,
+		BillingRateMultiplier: input.BillingRateMultiplier,
+		Notes:                 input.Notes,
 	}, nil
 }
 

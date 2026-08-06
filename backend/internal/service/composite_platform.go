@@ -45,7 +45,58 @@ func WithCompositeRouteDecision(ctx context.Context, decision CompositeRouteDeci
 	if source := strings.TrimSpace(decision.Source); source != "" {
 		ctx = context.WithValue(ctx, ctxkey.CompositeRouteSource, source)
 	}
+	if decision.BillingRateMultiplier != nil {
+		ctx = context.WithValue(ctx, ctxkey.CompositeRouteBillingRateMultiplier, *decision.BillingRateMultiplier)
+	}
 	return ctx
+}
+
+func CompositeRouteBillingRateMultiplierFromContext(ctx context.Context) (float64, bool) {
+	if ctx == nil {
+		return 0, false
+	}
+	rate, ok := ctx.Value(ctxkey.CompositeRouteBillingRateMultiplier).(float64)
+	if !ok || rate < 0 {
+		return 0, false
+	}
+	return rate, true
+}
+
+// CopyCompositeRouteContext snapshots request routing metadata onto another
+// context, such as the bounded context used by asynchronous usage billing.
+func CopyCompositeRouteContext(parent context.Context, base context.Context) context.Context {
+	if base == nil {
+		base = context.Background()
+	}
+	if parent == nil {
+		return base
+	}
+	if platform, ok := ResolvedTargetPlatformFromContext(parent); ok {
+		base = WithResolvedTargetPlatform(base, platform)
+	}
+	if model, ok := ResolvedUpstreamModelFromContext(parent); ok {
+		base = context.WithValue(base, ctxkey.ResolvedUpstreamModel, model)
+	}
+	if model, ok := RequestedPublicModelFromContext(parent); ok {
+		base = context.WithValue(base, ctxkey.RequestedPublicModel, model)
+	}
+	if source, ok := CompositeRouteSourceFromContext(parent); ok {
+		base = context.WithValue(base, ctxkey.CompositeRouteSource, source)
+	}
+	if rate, ok := CompositeRouteBillingRateMultiplierFromContext(parent); ok {
+		base = context.WithValue(base, ctxkey.CompositeRouteBillingRateMultiplier, rate)
+	}
+	return base
+}
+
+func effectiveCompositeBillingMultiplier(ctx context.Context, apiKey *APIKey, fallback float64) float64 {
+	if apiKey == nil || apiKey.Group == nil || apiKey.Group.Platform != PlatformComposite {
+		return fallback
+	}
+	if rate, ok := CompositeRouteBillingRateMultiplierFromContext(ctx); ok {
+		return rate
+	}
+	return fallback
 }
 
 func ResolvedUpstreamModelFromContext(ctx context.Context) (string, bool) {

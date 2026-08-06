@@ -59,6 +59,11 @@ func (CompositeModelRoute) Fields() []ent.Field {
 			Comment("Lower values win within the same match strength."),
 		field.Bool("enabled").
 			Default(true),
+		field.Float("billing_rate_multiplier").
+			Optional().
+			Nillable().
+			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
+			Comment("Optional route-specific user billing multiplier for composite groups."),
 		field.String("notes").
 			Optional().
 			Nillable().

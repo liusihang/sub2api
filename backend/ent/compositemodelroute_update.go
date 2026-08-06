@@ -174,6 +174,33 @@ func (_u *CompositeModelRouteUpdate) SetNillableEnabled(v *bool) *CompositeModel
 	return _u
 }
 
+// SetBillingRateMultiplier sets the "billing_rate_multiplier" field.
+func (_u *CompositeModelRouteUpdate) SetBillingRateMultiplier(v float64) *CompositeModelRouteUpdate {
+	_u.mutation.ResetBillingRateMultiplier()
+	_u.mutation.SetBillingRateMultiplier(v)
+	return _u
+}
+
+// SetNillableBillingRateMultiplier sets the "billing_rate_multiplier" field if the given value is not nil.
+func (_u *CompositeModelRouteUpdate) SetNillableBillingRateMultiplier(v *float64) *CompositeModelRouteUpdate {
+	if v != nil {
+		_u.SetBillingRateMultiplier(*v)
+	}
+	return _u
+}
+
+// AddBillingRateMultiplier adds value to the "billing_rate_multiplier" field.
+func (_u *CompositeModelRouteUpdate) AddBillingRateMultiplier(v float64) *CompositeModelRouteUpdate {
+	_u.mutation.AddBillingRateMultiplier(v)
+	return _u
+}
+
+// ClearBillingRateMultiplier clears the value of the "billing_rate_multiplier" field.
+func (_u *CompositeModelRouteUpdate) ClearBillingRateMultiplier() *CompositeModelRouteUpdate {
+	_u.mutation.ClearBillingRateMultiplier()
+	return _u
+}
+
 // SetNotes sets the "notes" field.
 func (_u *CompositeModelRouteUpdate) SetNotes(v string) *CompositeModelRouteUpdate {
 	_u.mutation.SetNotes(v)
@@ -329,6 +356,15 @@ func (_u *CompositeModelRouteUpdate) sqlSave(ctx context.Context) (_node int, er
 	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(compositemodelroute.FieldEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.BillingRateMultiplier(); ok {
+		_spec.SetField(compositemodelroute.FieldBillingRateMultiplier, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedBillingRateMultiplier(); ok {
+		_spec.AddField(compositemodelroute.FieldBillingRateMultiplier, field.TypeFloat64, value)
+	}
+	if _u.mutation.BillingRateMultiplierCleared() {
+		_spec.ClearField(compositemodelroute.FieldBillingRateMultiplier, field.TypeFloat64)
 	}
 	if value, ok := _u.mutation.Notes(); ok {
 		_spec.SetField(compositemodelroute.FieldNotes, field.TypeString, value)
@@ -530,6 +566,33 @@ func (_u *CompositeModelRouteUpdateOne) SetNillableEnabled(v *bool) *CompositeMo
 	return _u
 }
 
+// SetBillingRateMultiplier sets the "billing_rate_multiplier" field.
+func (_u *CompositeModelRouteUpdateOne) SetBillingRateMultiplier(v float64) *CompositeModelRouteUpdateOne {
+	_u.mutation.ResetBillingRateMultiplier()
+	_u.mutation.SetBillingRateMultiplier(v)
+	return _u
+}
+
+// SetNillableBillingRateMultiplier sets the "billing_rate_multiplier" field if the given value is not nil.
+func (_u *CompositeModelRouteUpdateOne) SetNillableBillingRateMultiplier(v *float64) *CompositeModelRouteUpdateOne {
+	if v != nil {
+		_u.SetBillingRateMultiplier(*v)
+	}
+	return _u
+}
+
+// AddBillingRateMultiplier adds value to the "billing_rate_multiplier" field.
+func (_u *CompositeModelRouteUpdateOne) AddBillingRateMultiplier(v float64) *CompositeModelRouteUpdateOne {
+	_u.mutation.AddBillingRateMultiplier(v)
+	return _u
+}
+
+// ClearBillingRateMultiplier clears the value of the "billing_rate_multiplier" field.
+func (_u *CompositeModelRouteUpdateOne) ClearBillingRateMultiplier() *CompositeModelRouteUpdateOne {
+	_u.mutation.ClearBillingRateMultiplier()
+	return _u
+}
+
 // SetNotes sets the "notes" field.
 func (_u *CompositeModelRouteUpdateOne) SetNotes(v string) *CompositeModelRouteUpdateOne {
 	_u.mutation.SetNotes(v)
@@ -715,6 +778,15 @@ func (_u *CompositeModelRouteUpdateOne) sqlSave(ctx context.Context) (_node *Com
 	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(compositemodelroute.FieldEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.BillingRateMultiplier(); ok {
+		_spec.SetField(compositemodelroute.FieldBillingRateMultiplier, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedBillingRateMultiplier(); ok {
+		_spec.AddField(compositemodelroute.FieldBillingRateMultiplier, field.TypeFloat64, value)
+	}
+	if _u.mutation.BillingRateMultiplierCleared() {
+		_spec.ClearField(compositemodelroute.FieldBillingRateMultiplier, field.TypeFloat64)
 	}
 	if value, ok := _u.mutation.Notes(); ok {
 		_spec.SetField(compositemodelroute.FieldNotes, field.TypeString, value)
