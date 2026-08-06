@@ -417,6 +417,15 @@ func TestLoadOpenAIFirstOutputTimeoutsFromEnv(t *testing.T) {
 	require.Equal(t, 240, cfg.Gateway.OpenAIHighEffortFirstOutputTimeoutSeconds)
 }
 
+func TestLoadOpenAIPassthroughFlushPreambleFromEnv(t *testing.T) {
+	resetViperWithJWTSecret(t)
+	t.Setenv("GATEWAY_OPENAI_PASSTHROUGH_FLUSH_PREAMBLE", "true")
+
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.True(t, cfg.Gateway.OpenAIPassthroughFlushPreamble)
+}
+
 func TestValidateOpenAIFirstOutputTimeoutMinimum(t *testing.T) {
 	resetViperWithJWTSecret(t)
 	cfg, err := Load()

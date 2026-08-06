@@ -461,6 +461,11 @@ func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
 	account.ApplyHeaderOverrides(req.Header)
 	setOpenAICodexRoutingHintFromBody(req.Header, account, body)
 	logOpenAIRoutingDiagnosticsFromBody(ctx, account, "http_passthrough", req.Header, body, "not_applicable")
+	// SSE 必须按事件边界实时到达。显式禁用上游响应压缩，避免 gzip/zstd
+	// 在低数据量推理阶段缓存 response.created/in_progress 等早期事件。
+	if !isOpenAIResponsesCompactPath(c) && gjson.GetBytes(body, "stream").Bool() {
+		req.Header.Set("accept-encoding", "identity")
+	}
 
 	return req, nil
 }
@@ -1272,6 +1277,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 	for documentScanner.Scan() {
 		line := documentScanner.Text()
 		lineStartsClientOutput := false
+		flushConfiguredPreamble := false
 		forceFlushFailedEvent := false
 		if data, ok := extractOpenAISSEDataLine(line); ok {
 			dataBytes := []byte(data)
@@ -1307,6 +1313,9 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 				}
 			}
 			eventType := strings.TrimSpace(gjson.Get(trimmedData, "type").String())
+			flushConfiguredPreamble = s.cfg != nil &&
+				s.cfg.Gateway.OpenAIPassthroughFlushPreamble &&
+				openAIStreamEventIsPreamble(eventType)
 			if eventType == "response.failed" {
 				failedMessage = extractOpenAISSEErrorMessage(dataBytes)
 				// response.failed 自带上游已消耗的 usage（input token 通常已扣）；必须先解析
@@ -1386,7 +1395,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 		}
 
 		if !clientDisconnected {
-			if !clientOutputStarted && !lineStartsClientOutput {
+			if !clientOutputStarted && !lineStartsClientOutput && !flushConfiguredPreamble {
 				pendingLines = append(pendingLines, line)
 				continue
 			}

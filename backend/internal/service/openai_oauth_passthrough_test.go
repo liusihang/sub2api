@@ -420,7 +420,7 @@ func TestOpenAIGatewayService_OAuthPassthrough_StreamKeepsToolNameAndBodyNormali
 	require.Empty(t, upstream.lastReq.Header.Get("Cookie"))
 	require.Empty(t, upstream.lastReq.Header.Get("X-Api-Key"))
 	require.Empty(t, upstream.lastReq.Header.Get("X-Goog-Api-Key"))
-	require.Empty(t, upstream.lastReq.Header.Get("Accept-Encoding"))
+	require.Equal(t, "identity", upstream.lastReq.Header.Get("Accept-Encoding"))
 	require.Empty(t, upstream.lastReq.Header.Get("Proxy-Authorization"))
 	require.Empty(t, upstream.lastReq.Header.Get("X-Test"))
 	require.Equal(t, "remote_compaction_v2", upstream.lastReq.Header.Get("x-codex-beta-features"))

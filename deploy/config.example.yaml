@@ -213,6 +213,9 @@ gateway:
   openai_first_output_timeout_seconds: 0
   # Optional high/xhigh/max override (seconds, 0=use the standard timeout)
   openai_high_effort_first_output_timeout_seconds: 0
+  # Flush response.created/response.in_progress immediately in OpenAI passthrough streams.
+  # This improves reasoning-stage responsiveness, but commits HTTP 200 and disables safe pre-output account failover.
+  openai_passthrough_flush_preamble: false
   # Max request body size in bytes (default: 256MB)
   # 请求体最大字节数（默认 256MB）
   max_body_size: 268435456

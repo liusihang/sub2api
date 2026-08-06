@@ -68,6 +68,22 @@ func runPassthroughFlushTest(
 	failAfterWrites int,
 	setups ...func(*gin.Context),
 ) (*openaiStreamingResultPassthrough, *httptest.ResponseRecorder, *passthroughFlushTestWriter, error) {
+	return runPassthroughFlushTestWithGatewayConfig(
+		t,
+		body,
+		failAfterWrites,
+		config.GatewayConfig{MaxLineSize: defaultMaxLineSize},
+		setups...,
+	)
+}
+
+func runPassthroughFlushTestWithGatewayConfig(
+	t *testing.T,
+	body io.ReadCloser,
+	failAfterWrites int,
+	gatewayCfg config.GatewayConfig,
+	setups ...func(*gin.Context),
+) (*openaiStreamingResultPassthrough, *httptest.ResponseRecorder, *passthroughFlushTestWriter, error) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
@@ -84,9 +100,10 @@ func runPassthroughFlushTest(
 		setup(c)
 	}
 
-	svc := &OpenAIGatewayService{cfg: &config.Config{
-		Gateway: config.GatewayConfig{MaxLineSize: defaultMaxLineSize},
-	}}
+	if gatewayCfg.MaxLineSize == 0 {
+		gatewayCfg.MaxLineSize = defaultMaxLineSize
+	}
+	svc := &OpenAIGatewayService{cfg: &config.Config{Gateway: gatewayCfg}}
 	resp := &http.Response{
 		StatusCode: http.StatusOK,
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
@@ -143,6 +160,62 @@ func TestOpenAIStreamingPassthroughKeepsPreamblePendingUntilFirstOutputBoundary(
 		len(preamble) + len(firstOutput),
 		len(upstream),
 	}, writer.flushBodyLengths)
+}
+
+func TestOpenAIStreamingPassthroughFlushesPreambleBeforeOutputWhenConfigured(t *testing.T) {
+	preamble := "event: response.created\n" +
+		`data: {"type":"response.created","response":{"id":"resp_early"}}` + "\n\n" +
+		"event: response.in_progress\n" +
+		`data: {"type":"response.in_progress","response":{"id":"resp_early"}}` + "\n\n"
+	firstOutput := `data: {"type":"response.output_text.delta","delta":"ready"}` + "\n\n"
+	terminalEvent := `data: {"type":"response.completed","response":{"id":"resp_early","usage":{"input_tokens":4,"output_tokens":1,"total_tokens":5}}}` + "\n\n"
+
+	gatewayCfg := passthroughPreambleFlushGatewayConfig(t)
+
+	_, recorder, writer, err := runPassthroughFlushTestWithGatewayConfig(
+		t,
+		io.NopCloser(strings.NewReader(preamble+firstOutput+terminalEvent)),
+		-1,
+		gatewayCfg,
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, preamble+firstOutput+terminalEvent, recorder.Body.String())
+	require.Equal(t, []int{
+		len(strings.SplitAfter(preamble, "\n\n")[0]),
+		len(preamble),
+		len(preamble) + len(firstOutput),
+		len(preamble) + len(firstOutput) + len(terminalEvent),
+	}, writer.flushBodyLengths)
+}
+
+func TestOpenAIStreamingPassthroughFlushPreambleDisablesFailoverAfterCommit(t *testing.T) {
+	preamble := "event: response.created\n" +
+		`data: {"type":"response.created","response":{"id":"resp_committed"}}` + "\n\n"
+	failedEvent := "event: response.failed\n" +
+		`data: {"type":"response.failed","error":{"code":"server_error","message":"upstream processing failed"}}` + "\n\n"
+	upstream := preamble + failedEvent
+
+	_, recorder, writer, err := runPassthroughFlushTestWithGatewayConfig(
+		t,
+		io.NopCloser(strings.NewReader(upstream)),
+		-1,
+		passthroughPreambleFlushGatewayConfig(t),
+	)
+
+	require.Error(t, err)
+	var failoverErr *UpstreamFailoverError
+	require.False(t, errors.As(err, &failoverErr))
+	require.Equal(t, upstream, recorder.Body.String())
+	require.Equal(t, []int{len(preamble), len(upstream)}, writer.flushBodyLengths)
+}
+
+func passthroughPreambleFlushGatewayConfig(t *testing.T) config.GatewayConfig {
+	t.Helper()
+	return config.GatewayConfig{
+		MaxLineSize:                    defaultMaxLineSize,
+		OpenAIPassthroughFlushPreamble: true,
+	}
 }
 
 func TestOpenAIStreamingPassthroughFlushesTerminalEventAtEOFWithoutBlankLine(t *testing.T) {
