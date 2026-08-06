@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http/httptest"
 	"testing"
 
@@ -137,4 +138,34 @@ func TestClientRequestedModelUsesCompositePublicModel(t *testing.T) {
 	require.Equal(t, "public-alias", fields.OriginalModel)
 	require.Equal(t, "public-alias", fields.ChannelMappedModel)
 	require.Equal(t, "public-alias\u2192gpt-5", fields.ModelMappingChain)
+}
+
+func TestUsageRecordContextPreservesCompositeRouteDecision(t *testing.T) {
+	rate := 0.4
+	parent := service.WithCompositeRouteDecision(context.Background(), service.CompositeRouteDecision{
+		Matched:               true,
+		Source:                service.CompositeRouteSourceExplicit,
+		PublicModel:           "public-alias",
+		TargetPlatform:        service.PlatformOpenAI,
+		UpstreamModel:         "gpt-5",
+		BillingRateMultiplier: &rate,
+	})
+
+	got := usageRecordContext(parent, context.Background())
+
+	platform, ok := service.ResolvedTargetPlatformFromContext(got)
+	require.True(t, ok)
+	require.Equal(t, service.PlatformOpenAI, platform)
+	upstreamModel, ok := service.ResolvedUpstreamModelFromContext(got)
+	require.True(t, ok)
+	require.Equal(t, "gpt-5", upstreamModel)
+	publicModel, ok := service.RequestedPublicModelFromContext(got)
+	require.True(t, ok)
+	require.Equal(t, "public-alias", publicModel)
+	source, ok := service.CompositeRouteSourceFromContext(got)
+	require.True(t, ok)
+	require.Equal(t, service.CompositeRouteSourceExplicit, source)
+	storedRate, ok := service.CompositeRouteBillingRateMultiplierFromContext(got)
+	require.True(t, ok)
+	require.InDelta(t, 0.4, storedRate, 1e-12)
 }

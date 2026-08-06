@@ -161,6 +161,20 @@ func (_c *CompositeModelRouteCreate) SetNillableEnabled(v *bool) *CompositeModel
 	return _c
 }
 
+// SetBillingRateMultiplier sets the "billing_rate_multiplier" field.
+func (_c *CompositeModelRouteCreate) SetBillingRateMultiplier(v float64) *CompositeModelRouteCreate {
+	_c.mutation.SetBillingRateMultiplier(v)
+	return _c
+}
+
+// SetNillableBillingRateMultiplier sets the "billing_rate_multiplier" field if the given value is not nil.
+func (_c *CompositeModelRouteCreate) SetNillableBillingRateMultiplier(v *float64) *CompositeModelRouteCreate {
+	if v != nil {
+		_c.SetBillingRateMultiplier(*v)
+	}
+	return _c
+}
+
 // SetNotes sets the "notes" field.
 func (_c *CompositeModelRouteCreate) SetNotes(v string) *CompositeModelRouteCreate {
 	_c.mutation.SetNotes(v)
@@ -385,6 +399,10 @@ func (_c *CompositeModelRouteCreate) createSpec() (*CompositeModelRoute, *sqlgra
 		_spec.SetField(compositemodelroute.FieldEnabled, field.TypeBool, value)
 		_node.Enabled = value
 	}
+	if value, ok := _c.mutation.BillingRateMultiplier(); ok {
+		_spec.SetField(compositemodelroute.FieldBillingRateMultiplier, field.TypeFloat64, value)
+		_node.BillingRateMultiplier = &value
+	}
 	if value, ok := _c.mutation.Notes(); ok {
 		_spec.SetField(compositemodelroute.FieldNotes, field.TypeString, value)
 		_node.Notes = &value
@@ -587,6 +605,30 @@ func (u *CompositeModelRouteUpsert) SetEnabled(v bool) *CompositeModelRouteUpser
 // UpdateEnabled sets the "enabled" field to the value that was provided on create.
 func (u *CompositeModelRouteUpsert) UpdateEnabled() *CompositeModelRouteUpsert {
 	u.SetExcluded(compositemodelroute.FieldEnabled)
+	return u
+}
+
+// SetBillingRateMultiplier sets the "billing_rate_multiplier" field.
+func (u *CompositeModelRouteUpsert) SetBillingRateMultiplier(v float64) *CompositeModelRouteUpsert {
+	u.Set(compositemodelroute.FieldBillingRateMultiplier, v)
+	return u
+}
+
+// UpdateBillingRateMultiplier sets the "billing_rate_multiplier" field to the value that was provided on create.
+func (u *CompositeModelRouteUpsert) UpdateBillingRateMultiplier() *CompositeModelRouteUpsert {
+	u.SetExcluded(compositemodelroute.FieldBillingRateMultiplier)
+	return u
+}
+
+// AddBillingRateMultiplier adds v to the "billing_rate_multiplier" field.
+func (u *CompositeModelRouteUpsert) AddBillingRateMultiplier(v float64) *CompositeModelRouteUpsert {
+	u.Add(compositemodelroute.FieldBillingRateMultiplier, v)
+	return u
+}
+
+// ClearBillingRateMultiplier clears the value of the "billing_rate_multiplier" field.
+func (u *CompositeModelRouteUpsert) ClearBillingRateMultiplier() *CompositeModelRouteUpsert {
+	u.SetNull(compositemodelroute.FieldBillingRateMultiplier)
 	return u
 }
 
@@ -804,6 +846,34 @@ func (u *CompositeModelRouteUpsertOne) SetEnabled(v bool) *CompositeModelRouteUp
 func (u *CompositeModelRouteUpsertOne) UpdateEnabled() *CompositeModelRouteUpsertOne {
 	return u.Update(func(s *CompositeModelRouteUpsert) {
 		s.UpdateEnabled()
+	})
+}
+
+// SetBillingRateMultiplier sets the "billing_rate_multiplier" field.
+func (u *CompositeModelRouteUpsertOne) SetBillingRateMultiplier(v float64) *CompositeModelRouteUpsertOne {
+	return u.Update(func(s *CompositeModelRouteUpsert) {
+		s.SetBillingRateMultiplier(v)
+	})
+}
+
+// AddBillingRateMultiplier adds v to the "billing_rate_multiplier" field.
+func (u *CompositeModelRouteUpsertOne) AddBillingRateMultiplier(v float64) *CompositeModelRouteUpsertOne {
+	return u.Update(func(s *CompositeModelRouteUpsert) {
+		s.AddBillingRateMultiplier(v)
+	})
+}
+
+// UpdateBillingRateMultiplier sets the "billing_rate_multiplier" field to the value that was provided on create.
+func (u *CompositeModelRouteUpsertOne) UpdateBillingRateMultiplier() *CompositeModelRouteUpsertOne {
+	return u.Update(func(s *CompositeModelRouteUpsert) {
+		s.UpdateBillingRateMultiplier()
+	})
+}
+
+// ClearBillingRateMultiplier clears the value of the "billing_rate_multiplier" field.
+func (u *CompositeModelRouteUpsertOne) ClearBillingRateMultiplier() *CompositeModelRouteUpsertOne {
+	return u.Update(func(s *CompositeModelRouteUpsert) {
+		s.ClearBillingRateMultiplier()
 	})
 }
 
@@ -1190,6 +1260,34 @@ func (u *CompositeModelRouteUpsertBulk) SetEnabled(v bool) *CompositeModelRouteU
 func (u *CompositeModelRouteUpsertBulk) UpdateEnabled() *CompositeModelRouteUpsertBulk {
 	return u.Update(func(s *CompositeModelRouteUpsert) {
 		s.UpdateEnabled()
+	})
+}
+
+// SetBillingRateMultiplier sets the "billing_rate_multiplier" field.
+func (u *CompositeModelRouteUpsertBulk) SetBillingRateMultiplier(v float64) *CompositeModelRouteUpsertBulk {
+	return u.Update(func(s *CompositeModelRouteUpsert) {
+		s.SetBillingRateMultiplier(v)
+	})
+}
+
+// AddBillingRateMultiplier adds v to the "billing_rate_multiplier" field.
+func (u *CompositeModelRouteUpsertBulk) AddBillingRateMultiplier(v float64) *CompositeModelRouteUpsertBulk {
+	return u.Update(func(s *CompositeModelRouteUpsert) {
+		s.AddBillingRateMultiplier(v)
+	})
+}
+
+// UpdateBillingRateMultiplier sets the "billing_rate_multiplier" field to the value that was provided on create.
+func (u *CompositeModelRouteUpsertBulk) UpdateBillingRateMultiplier() *CompositeModelRouteUpsertBulk {
+	return u.Update(func(s *CompositeModelRouteUpsert) {
+		s.UpdateBillingRateMultiplier()
+	})
+}
+
+// ClearBillingRateMultiplier clears the value of the "billing_rate_multiplier" field.
+func (u *CompositeModelRouteUpsertBulk) ClearBillingRateMultiplier() *CompositeModelRouteUpsertBulk {
+	return u.Update(func(s *CompositeModelRouteUpsert) {
+		s.ClearBillingRateMultiplier()
 	})
 }
 

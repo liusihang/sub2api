@@ -20,6 +20,11 @@ const (
 	// CompositeRouteSource 标识 composite 解析结果来自显式路由还是内置模型探测。
 	CompositeRouteSource Key = "ctx_composite_route_source"
 
+	// CompositeRouteBillingRateMultiplier is an optional route-specific user
+	// billing multiplier for a composite request. It preserves the default
+	// composite group multiplier when absent.
+	CompositeRouteBillingRateMultiplier Key = "ctx_composite_route_billing_rate_multiplier"
+
 	// RequestID 为服务端生成/透传的请求 ID。
 	RequestID Key = "ctx_request_id"
 

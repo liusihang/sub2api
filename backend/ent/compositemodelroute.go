@@ -40,6 +40,8 @@ type CompositeModelRoute struct {
 	Priority int `json:"priority,omitempty"`
 	// Enabled holds the value of the "enabled" field.
 	Enabled bool `json:"enabled,omitempty"`
+	// Optional route-specific user billing multiplier for composite groups.
+	BillingRateMultiplier *float64 `json:"billing_rate_multiplier,omitempty"`
 	// Notes holds the value of the "notes" field.
 	Notes *string `json:"notes,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -75,6 +77,8 @@ func (*CompositeModelRoute) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case compositemodelroute.FieldEnabled:
 			values[i] = new(sql.NullBool)
+		case compositemodelroute.FieldBillingRateMultiplier:
+			values[i] = new(sql.NullFloat64)
 		case compositemodelroute.FieldID, compositemodelroute.FieldGroupID, compositemodelroute.FieldPriority:
 			values[i] = new(sql.NullInt64)
 		case compositemodelroute.FieldPublicModel, compositemodelroute.FieldMatchType, compositemodelroute.FieldTargetPlatform, compositemodelroute.FieldUpstreamModel, compositemodelroute.FieldEndpoint, compositemodelroute.FieldNotes:
@@ -169,6 +173,13 @@ func (_m *CompositeModelRoute) assignValues(columns []string, values []any) erro
 			} else if value.Valid {
 				_m.Enabled = value.Bool
 			}
+		case compositemodelroute.FieldBillingRateMultiplier:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field billing_rate_multiplier", values[i])
+			} else if value.Valid {
+				_m.BillingRateMultiplier = new(float64)
+				*_m.BillingRateMultiplier = value.Float64
+			}
 		case compositemodelroute.FieldNotes:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field notes", values[i])
@@ -251,6 +262,11 @@ func (_m *CompositeModelRoute) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("enabled=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Enabled))
+	builder.WriteString(", ")
+	if v := _m.BillingRateMultiplier; v != nil {
+		builder.WriteString("billing_rate_multiplier=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	if v := _m.Notes; v != nil {
 		builder.WriteString("notes=")

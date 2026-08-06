@@ -252,6 +252,41 @@ func TestGatewayServiceRecordUsage_PreservesLoopedChannelAndAccountUpstreamModel
 	require.Equal(t, "gpt-5.6-sol", *usageRepo.lastLog.UpstreamModel)
 }
 
+func TestGatewayServiceRecordUsage_CompositeRouteMultiplierOverridesGroupDefault(t *testing.T) {
+	usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
+	svc := newGatewayRecordUsageServiceForTest(usageRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{})
+	ctx := context.WithValue(
+		context.Background(),
+		ctxkey.Key("ctx_composite_route_billing_rate_multiplier"),
+		0.4,
+	)
+
+	err := svc.RecordUsage(ctx, &RecordUsageInput{
+		Result: &ForwardResult{
+			RequestID: "gateway_composite_route_multiplier",
+			Usage: ClaudeUsage{
+				InputTokens:  10,
+				OutputTokens: 6,
+			},
+			Model:    "gpt-5.6-sol",
+			Duration: time.Second,
+		},
+		APIKey: &APIKey{
+			ID: 501,
+			Group: &Group{
+				Platform:       PlatformComposite,
+				RateMultiplier: 0.13,
+			},
+		},
+		User:    &User{ID: 601},
+		Account: &Account{ID: 701, Platform: PlatformOpenAI},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, usageRepo.lastLog)
+	require.InDelta(t, 0.4, usageRepo.lastLog.RateMultiplier, 1e-12)
+}
+
 func TestGatewayServiceRecordUsage_EmptyImageSizeDefaultsBeforeBillingAndPersistence(t *testing.T) {
 	imagePrice2K := 0.19
 	groupID := int64(901)

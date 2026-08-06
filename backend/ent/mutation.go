@@ -19473,27 +19473,29 @@ func (m *ChannelMonitorRequestTemplateMutation) ResetEdge(name string) error {
 // CompositeModelRouteMutation represents an operation that mutates the CompositeModelRoute nodes in the graph.
 type CompositeModelRouteMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *int64
-	created_at      *time.Time
-	updated_at      *time.Time
-	deleted_at      *time.Time
-	public_model    *string
-	match_type      *string
-	target_platform *string
-	upstream_model  *string
-	endpoint        *string
-	priority        *int
-	addpriority     *int
-	enabled         *bool
-	notes           *string
-	clearedFields   map[string]struct{}
-	group           *int64
-	clearedgroup    bool
-	done            bool
-	oldValue        func(context.Context) (*CompositeModelRoute, error)
-	predicates      []predicate.CompositeModelRoute
+	op                         Op
+	typ                        string
+	id                         *int64
+	created_at                 *time.Time
+	updated_at                 *time.Time
+	deleted_at                 *time.Time
+	public_model               *string
+	match_type                 *string
+	target_platform            *string
+	upstream_model             *string
+	endpoint                   *string
+	priority                   *int
+	addpriority                *int
+	enabled                    *bool
+	billing_rate_multiplier    *float64
+	addbilling_rate_multiplier *float64
+	notes                      *string
+	clearedFields              map[string]struct{}
+	group                      *int64
+	clearedgroup               bool
+	done                       bool
+	oldValue                   func(context.Context) (*CompositeModelRoute, error)
+	predicates                 []predicate.CompositeModelRoute
 }
 
 var _ ent.Mutation = (*CompositeModelRouteMutation)(nil)
@@ -20023,6 +20025,76 @@ func (m *CompositeModelRouteMutation) ResetEnabled() {
 	m.enabled = nil
 }
 
+// SetBillingRateMultiplier sets the "billing_rate_multiplier" field.
+func (m *CompositeModelRouteMutation) SetBillingRateMultiplier(f float64) {
+	m.billing_rate_multiplier = &f
+	m.addbilling_rate_multiplier = nil
+}
+
+// BillingRateMultiplier returns the value of the "billing_rate_multiplier" field in the mutation.
+func (m *CompositeModelRouteMutation) BillingRateMultiplier() (r float64, exists bool) {
+	v := m.billing_rate_multiplier
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBillingRateMultiplier returns the old "billing_rate_multiplier" field's value of the CompositeModelRoute entity.
+// If the CompositeModelRoute object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CompositeModelRouteMutation) OldBillingRateMultiplier(ctx context.Context) (v *float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBillingRateMultiplier is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBillingRateMultiplier requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBillingRateMultiplier: %w", err)
+	}
+	return oldValue.BillingRateMultiplier, nil
+}
+
+// AddBillingRateMultiplier adds f to the "billing_rate_multiplier" field.
+func (m *CompositeModelRouteMutation) AddBillingRateMultiplier(f float64) {
+	if m.addbilling_rate_multiplier != nil {
+		*m.addbilling_rate_multiplier += f
+	} else {
+		m.addbilling_rate_multiplier = &f
+	}
+}
+
+// AddedBillingRateMultiplier returns the value that was added to the "billing_rate_multiplier" field in this mutation.
+func (m *CompositeModelRouteMutation) AddedBillingRateMultiplier() (r float64, exists bool) {
+	v := m.addbilling_rate_multiplier
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearBillingRateMultiplier clears the value of the "billing_rate_multiplier" field.
+func (m *CompositeModelRouteMutation) ClearBillingRateMultiplier() {
+	m.billing_rate_multiplier = nil
+	m.addbilling_rate_multiplier = nil
+	m.clearedFields[compositemodelroute.FieldBillingRateMultiplier] = struct{}{}
+}
+
+// BillingRateMultiplierCleared returns if the "billing_rate_multiplier" field was cleared in this mutation.
+func (m *CompositeModelRouteMutation) BillingRateMultiplierCleared() bool {
+	_, ok := m.clearedFields[compositemodelroute.FieldBillingRateMultiplier]
+	return ok
+}
+
+// ResetBillingRateMultiplier resets all changes to the "billing_rate_multiplier" field.
+func (m *CompositeModelRouteMutation) ResetBillingRateMultiplier() {
+	m.billing_rate_multiplier = nil
+	m.addbilling_rate_multiplier = nil
+	delete(m.clearedFields, compositemodelroute.FieldBillingRateMultiplier)
+}
+
 // SetNotes sets the "notes" field.
 func (m *CompositeModelRouteMutation) SetNotes(s string) {
 	m.notes = &s
@@ -20133,7 +20205,7 @@ func (m *CompositeModelRouteMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CompositeModelRouteMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.created_at != nil {
 		fields = append(fields, compositemodelroute.FieldCreatedAt)
 	}
@@ -20166,6 +20238,9 @@ func (m *CompositeModelRouteMutation) Fields() []string {
 	}
 	if m.enabled != nil {
 		fields = append(fields, compositemodelroute.FieldEnabled)
+	}
+	if m.billing_rate_multiplier != nil {
+		fields = append(fields, compositemodelroute.FieldBillingRateMultiplier)
 	}
 	if m.notes != nil {
 		fields = append(fields, compositemodelroute.FieldNotes)
@@ -20200,6 +20275,8 @@ func (m *CompositeModelRouteMutation) Field(name string) (ent.Value, bool) {
 		return m.Priority()
 	case compositemodelroute.FieldEnabled:
 		return m.Enabled()
+	case compositemodelroute.FieldBillingRateMultiplier:
+		return m.BillingRateMultiplier()
 	case compositemodelroute.FieldNotes:
 		return m.Notes()
 	}
@@ -20233,6 +20310,8 @@ func (m *CompositeModelRouteMutation) OldField(ctx context.Context, name string)
 		return m.OldPriority(ctx)
 	case compositemodelroute.FieldEnabled:
 		return m.OldEnabled(ctx)
+	case compositemodelroute.FieldBillingRateMultiplier:
+		return m.OldBillingRateMultiplier(ctx)
 	case compositemodelroute.FieldNotes:
 		return m.OldNotes(ctx)
 	}
@@ -20321,6 +20400,13 @@ func (m *CompositeModelRouteMutation) SetField(name string, value ent.Value) err
 		}
 		m.SetEnabled(v)
 		return nil
+	case compositemodelroute.FieldBillingRateMultiplier:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBillingRateMultiplier(v)
+		return nil
 	case compositemodelroute.FieldNotes:
 		v, ok := value.(string)
 		if !ok {
@@ -20339,6 +20425,9 @@ func (m *CompositeModelRouteMutation) AddedFields() []string {
 	if m.addpriority != nil {
 		fields = append(fields, compositemodelroute.FieldPriority)
 	}
+	if m.addbilling_rate_multiplier != nil {
+		fields = append(fields, compositemodelroute.FieldBillingRateMultiplier)
+	}
 	return fields
 }
 
@@ -20349,6 +20438,8 @@ func (m *CompositeModelRouteMutation) AddedField(name string) (ent.Value, bool) 
 	switch name {
 	case compositemodelroute.FieldPriority:
 		return m.AddedPriority()
+	case compositemodelroute.FieldBillingRateMultiplier:
+		return m.AddedBillingRateMultiplier()
 	}
 	return nil, false
 }
@@ -20365,6 +20456,13 @@ func (m *CompositeModelRouteMutation) AddField(name string, value ent.Value) err
 		}
 		m.AddPriority(v)
 		return nil
+	case compositemodelroute.FieldBillingRateMultiplier:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddBillingRateMultiplier(v)
+		return nil
 	}
 	return fmt.Errorf("unknown CompositeModelRoute numeric field %s", name)
 }
@@ -20375,6 +20473,9 @@ func (m *CompositeModelRouteMutation) ClearedFields() []string {
 	var fields []string
 	if m.FieldCleared(compositemodelroute.FieldDeletedAt) {
 		fields = append(fields, compositemodelroute.FieldDeletedAt)
+	}
+	if m.FieldCleared(compositemodelroute.FieldBillingRateMultiplier) {
+		fields = append(fields, compositemodelroute.FieldBillingRateMultiplier)
 	}
 	if m.FieldCleared(compositemodelroute.FieldNotes) {
 		fields = append(fields, compositemodelroute.FieldNotes)
@@ -20395,6 +20496,9 @@ func (m *CompositeModelRouteMutation) ClearField(name string) error {
 	switch name {
 	case compositemodelroute.FieldDeletedAt:
 		m.ClearDeletedAt()
+		return nil
+	case compositemodelroute.FieldBillingRateMultiplier:
+		m.ClearBillingRateMultiplier()
 		return nil
 	case compositemodelroute.FieldNotes:
 		m.ClearNotes()
@@ -20439,6 +20543,9 @@ func (m *CompositeModelRouteMutation) ResetField(name string) error {
 		return nil
 	case compositemodelroute.FieldEnabled:
 		m.ResetEnabled()
+		return nil
+	case compositemodelroute.FieldBillingRateMultiplier:
+		m.ResetBillingRateMultiplier()
 		return nil
 	case compositemodelroute.FieldNotes:
 		m.ResetNotes()
