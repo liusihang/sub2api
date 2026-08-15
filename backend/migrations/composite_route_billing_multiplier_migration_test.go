@@ -8,7 +8,7 @@ import (
 )
 
 func TestCompositeRouteBillingMultiplierMigrationIsIdempotent(t *testing.T) {
-	raw, err := FS.ReadFile("194_composite_route_billing_rate_multiplier.sql")
+	raw, err := FS.ReadFile("224_composite_route_billing_rate_multiplier.sql")
 	require.NoError(t, err)
 
 	sql := strings.ToLower(string(raw))
