@@ -182,6 +182,14 @@ describe('CreateAccountModal OpenAI long-context billing', () => {
     )
   })
 
+  it('shows Codex fingerprint convergence for OpenAI API Key accounts', async () => {
+    const wrapper = mountModal()
+    await selectButtonByText(wrapper, 'OpenAI')
+    await selectButtonByText(wrapper, 'API Key')
+
+    expect(wrapper.find('[data-testid="create-codex-fingerprint-mode-select"]').exists()).toBe(true)
+  })
+
   it('enables upstream billing probes by default for new OpenAI API key accounts', async () => {
     await submitApiKeyAccount('openai')
 

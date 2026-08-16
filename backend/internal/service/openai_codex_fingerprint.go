@@ -31,10 +31,10 @@ func stageCodexFingerprintIDs(c *gin.Context, ids *codexFingerprintIDs) {
 }
 
 // applyStagedCodexFingerprintHeaders 读取 context 暂存的收敛 ID 并改写出站头。
-// 非透传与透传两个请求构造器共用本函数，防止应用语义漂移。仅 OAuth 账号
-// 生效（stale 键在账号类型混合 failover 下由该门挡住）。
+// 非透传与透传两个请求构造器共用本函数，防止应用语义漂移。仅显式开启
+// 收敛的 OpenAI OAuth/API Key 账号生效（stale 键由模式门挡住）。
 func applyStagedCodexFingerprintHeaders(c *gin.Context, account *Account, h http.Header) {
-	if c == nil || account == nil || account.Type != AccountTypeOAuth {
+	if c == nil || account == nil || account.GetCodexFingerprintMode() == codexFingerprintOff {
 		return
 	}
 	value, ok := c.Get(codexFingerprintIDsContextKey)
@@ -46,8 +46,8 @@ func applyStagedCodexFingerprintHeaders(c *gin.Context, account *Account, h http
 	}
 }
 
-// codexFingerprintMode 控制 OAuth 账号出站请求的设备指纹收敛强度。
-// 多人共享同一 OAuth 账号时，每个用户的 Codex 客户端会携带各自不同的
+// codexFingerprintMode 控制 OpenAI OAuth/API Key 账号出站请求的设备指纹收敛强度。
+// 多人共享同一账号时，每个用户的 Codex 客户端会携带各自不同的
 // installation_id / session_id / thread_id，上游据此判定设备数和会话数。
 // 收敛模式将这些标识改写为账号级恒定值，减少上游可见的设备/会话指纹。
 type codexFingerprintMode string
@@ -82,7 +82,7 @@ const codexFingerprintModeExtraKey = "codex_fingerprint_mode"
 // 的 A/B 实测。上游的配额判定策略不可观测，因此这里取兼容安全的一侧：
 // 不显式 opt-in 就保持 v0.1.175 之前的客户端身份（#5610）。
 func (a *Account) GetCodexFingerprintMode() codexFingerprintMode {
-	if a == nil || !a.IsOpenAIOAuth() {
+	if a == nil || (!a.IsOpenAIOAuth() && !a.IsOpenAIApiKey()) {
 		return codexFingerprintOff
 	}
 	raw := strings.TrimSpace(a.GetExtraString(codexFingerprintModeExtraKey))

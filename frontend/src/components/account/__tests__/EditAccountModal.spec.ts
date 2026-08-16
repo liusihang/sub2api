@@ -395,6 +395,26 @@ describe('EditAccountModal', () => {
     })
   })
 
+  it('loads and submits Codex fingerprint convergence for OpenAI API Key accounts', async () => {
+    const account = buildAccount()
+    account.extra = {
+      codex_fingerprint_mode: 'session'
+    }
+    updateAccountMock.mockReset()
+    checkMixedChannelRiskMock.mockReset()
+    checkMixedChannelRiskMock.mockResolvedValue({ has_risk: false })
+    updateAccountMock.mockResolvedValue(account)
+
+    const wrapper = mountModal(account)
+    const select = wrapper.get('[data-testid="edit-codex-fingerprint-mode-select"]')
+    expect((select.element as HTMLSelectElement).value).toBe('session')
+
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+
+    expect(updateAccountMock).toHaveBeenCalledTimes(1)
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra?.codex_fingerprint_mode).toBe('session')
+  })
+
   it('loads and submits the per-account OpenAI long-context billing toggle', async () => {
     const account = buildAccount()
     account.extra = {

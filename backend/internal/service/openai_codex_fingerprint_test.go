@@ -22,6 +22,15 @@ func newTestOAuthAccount(id int64, extra map[string]any) *Account {
 	}
 }
 
+func newTestAPIKeyAccount(id int64, extra map[string]any) *Account {
+	return &Account{
+		ID:       id,
+		Platform: PlatformOpenAI,
+		Type:     AccountTypeAPIKey,
+		Extra:    extra,
+	}
+}
+
 // --- deriveStableUUIDv4 ---
 
 func TestDeriveStableUUIDv4_Deterministic(t *testing.T) {
@@ -53,7 +62,7 @@ func TestGetCodexFingerprintMode(t *testing.T) {
 		expected codexFingerprintMode
 	}{
 		{"nil 账号", nil, codexFingerprintOff},
-		{"非 OAuth 账号", &Account{Platform: PlatformOpenAI, Type: "api_key"}, codexFingerprintOff},
+		{"非 OpenAI 账号", &Account{Platform: PlatformAnthropic, Type: AccountTypeAPIKey, Extra: map[string]any{codexFingerprintModeExtraKey: "session"}}, codexFingerprintOff},
 		// 收敛是显式 opt-in：缺省/空/非法一律 off（#5610）。存量账号普遍没有这个
 		// extra 键，升级不得把它们静默切进收敛。
 		{"无 extra 默认 off", newTestOAuthAccount(1, nil), codexFingerprintOff},
@@ -63,6 +72,7 @@ func TestGetCodexFingerprintMode(t *testing.T) {
 		{"device", newTestOAuthAccount(1, map[string]any{codexFingerprintModeExtraKey: "device"}), codexFingerprintDevice},
 		{"session", newTestOAuthAccount(1, map[string]any{codexFingerprintModeExtraKey: "session"}), codexFingerprintSession},
 		{"full", newTestOAuthAccount(1, map[string]any{codexFingerprintModeExtraKey: "full"}), codexFingerprintFull},
+		{"API Key session", newTestAPIKeyAccount(2, map[string]any{codexFingerprintModeExtraKey: "session"}), codexFingerprintSession},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -578,16 +588,17 @@ func TestStageCodexFingerprintIDs_NilOverwritesPreviousAccount(t *testing.T) {
 	assert.Empty(t, h.Get("x-codex-installation-id"))
 }
 
-func TestApplyStagedCodexFingerprintHeaders_SkipsNonOAuthAccount(t *testing.T) {
+func TestApplyStagedCodexFingerprintHeaders_AppliesAPIKeyAccount(t *testing.T) {
 	c := newFingerprintStageTestContext(t)
-	oauthIDs := resolveCodexFingerprintIDs(newTestOAuthAccount(1003, nil), "sess-y", codexFingerprintSession)
-	require.NotNil(t, oauthIDs)
-	stageCodexFingerprintIDs(c, oauthIDs)
+	apiKeyAccount := newTestAPIKeyAccount(1004, map[string]any{codexFingerprintModeExtraKey: "session"})
+	apiKeyIDs := resolveCodexFingerprintIDs(apiKeyAccount, "sess-y", codexFingerprintSession)
+	require.NotNil(t, apiKeyIDs)
+	stageCodexFingerprintIDs(c, apiKeyIDs)
 
 	h := http.Header{}
-	apiKeyAccount := &Account{ID: 1004, Platform: PlatformOpenAI, Type: AccountTypeAPIKey}
 	applyStagedCodexFingerprintHeaders(c, apiKeyAccount, h)
-	assert.Empty(t, h.Get("x-codex-installation-id"), "stale 收敛 ID 不得应用到非 OAuth 账号")
+	assert.Equal(t, apiKeyIDs.installationID, h.Get("x-codex-installation-id"))
+	assert.Equal(t, apiKeyIDs.sessionID, h.Get("session_id"))
 }
 
 func TestBuildUpstreamRequestOpenAIPassthrough_AppliesStagedFingerprint(t *testing.T) {
