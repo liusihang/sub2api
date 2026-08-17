@@ -106,6 +106,40 @@ func TestGatewayRoutesAlphaSearchRejectsNonOpenAIGroup(t *testing.T) {
 	require.Contains(t, w.Body.String(), "only available for OpenAI groups")
 }
 
+func TestGatewayRoutesAlphaSearchAllowsCompositeOpenAIRoute(t *testing.T) {
+	router := newGatewayRoutesTestRouter(service.PlatformComposite)
+
+	for _, path := range []string{
+		"/v1/alpha/search",
+		"/alpha/search",
+		"/backend-api/codex/alpha/search",
+	} {
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"model":"gpt-5.6-sol"}`))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+
+		// The minimal route fixture intentionally omits AuthSubject. Reaching this
+		// error proves the composite OpenAI request passed the platform gate.
+		require.Equal(t, http.StatusInternalServerError, w.Code, "path=%s", path)
+		require.Contains(t, w.Body.String(), "User context not found", "path=%s", path)
+		require.NotContains(t, w.Body.String(), "only available for OpenAI groups", "path=%s", path)
+	}
+}
+
+func TestGatewayRoutesAlphaSearchRejectsCompositeNonOpenAIRoute(t *testing.T) {
+	router := newGatewayRoutesTestRouter(service.PlatformComposite)
+	req := httptest.NewRequest(http.MethodPost, "/v1/alpha/search", strings.NewReader(`{"model":"claude-sonnet-4-5"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusNotFound, w.Code)
+	require.Contains(t, w.Body.String(), "only available for OpenAI groups")
+}
+
 func TestGatewayRoutesOpenAIImagesPathsAreRegistered(t *testing.T) {
 	router := newGatewayRoutesTestRouter()
 
