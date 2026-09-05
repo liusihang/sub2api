@@ -2583,6 +2583,7 @@ func TestOpenAIGatewayService_APIKeyPassthrough_AppliesCodexFingerprintConvergen
 		Extra: map[string]any{
 			"openai_passthrough":     true,
 			"codex_fingerprint_mode": "session",
+			"codex_fingerprint_seed": "22222222-2222-4222-8222-222222222222",
 		},
 		Status:         StatusActive,
 		Schedulable:    true,
@@ -2594,8 +2595,10 @@ func TestOpenAIGatewayService_APIKeyPassthrough_AppliesCodexFingerprintConvergen
 	require.NotNil(t, result)
 	require.NotNil(t, upstream.lastReq)
 
-	convergedSession := resolveConvergedSessionID(account)
-	convergedInstallation := resolveConvergedInstallationID(account)
+	seed, ok := codexFingerprintSeed(account.Extra)
+	require.True(t, ok)
+	convergedSession := resolveConvergedSessionID(seed)
+	convergedInstallation := resolveConvergedInstallationID(account, seed)
 	require.Equal(t, convergedSession, upstream.lastReq.Header.Get("session-id"))
 	require.Equal(t, convergedInstallation, upstream.lastReq.Header.Get("x-codex-installation-id"))
 	require.Equal(t, convergedSession, gjson.GetBytes(upstream.lastBody, "client_metadata.session_id").String())

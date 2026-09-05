@@ -191,7 +191,8 @@ func TestDuplicateAccountDoesNotCopyCodexFingerprintSeed(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotEqual(t, source.ID, duplicate.ID)
-	require.NotContains(t, duplicate.Extra, codexFingerprintSeedExtraKey)
+	duplicateSeed := requireValidCodexFingerprintSeed(t, duplicate.Extra)
+	require.NotEqual(t, testCodexFingerprintSeed, duplicateSeed)
 	require.Equal(t, "session", duplicate.Extra[codexFingerprintModeExtraKey])
 }
 

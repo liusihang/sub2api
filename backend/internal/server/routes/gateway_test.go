@@ -103,7 +103,7 @@ func TestGatewayRoutesAlphaSearchRejectsUnsupportedGroup(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusNotFound, w.Code)
-	require.Contains(t, w.Body.String(), "only available for OpenAI and Composite groups")
+	require.Contains(t, w.Body.String(), "only available for OpenAI groups")
 }
 
 func TestGatewayRoutesAlphaSearchAllowsCompositeOpenAIRoute(t *testing.T) {
