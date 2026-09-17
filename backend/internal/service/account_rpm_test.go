@@ -31,6 +31,30 @@ func TestGetBaseRPM(t *testing.T) {
 	}
 }
 
+func TestSupportsAccountRPM(t *testing.T) {
+	tests := []struct {
+		name     string
+		account  *Account
+		expected bool
+	}{
+		{name: "anthropic oauth", account: &Account{Platform: PlatformAnthropic, Type: AccountTypeOAuth}, expected: true},
+		{name: "anthropic setup token", account: &Account{Platform: PlatformAnthropic, Type: AccountTypeSetupToken}, expected: true},
+		{name: "openai api key", account: &Account{Platform: PlatformOpenAI, Type: AccountTypeAPIKey}, expected: true},
+		{name: "other platform api key", account: &Account{Platform: PlatformGemini, Type: AccountTypeAPIKey}, expected: true},
+		{name: "openai oauth", account: &Account{Platform: PlatformOpenAI, Type: AccountTypeOAuth}, expected: false},
+		{name: "anthropic api key", account: &Account{Platform: PlatformAnthropic, Type: AccountTypeAPIKey}, expected: true},
+		{name: "openai upstream", account: &Account{Platform: PlatformOpenAI, Type: AccountTypeUpstream}, expected: false},
+		{name: "nil account", account: nil, expected: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.account.SupportsAccountRPM(); got != tt.expected {
+				t.Errorf("SupportsAccountRPM() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestGetRPMStrategy(t *testing.T) {
 	tests := []struct {
 		name     string
