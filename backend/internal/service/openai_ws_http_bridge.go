@@ -254,7 +254,11 @@ func prepareOpenAIWSHTTPBridgeBody(account *Account, payload []byte) ([]byte, er
 	delete(body, "previous_response_id")
 	deleteOpenAIResponsesNoneReasoningEffortFromObject(account, body)
 	body["stream"] = true
-	return json.Marshal(body)
+	encoded, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	return normalizeTongjiResponsesInclude(account, encoded)
 }
 
 type openAIWSToolCallReplayCollector struct {
