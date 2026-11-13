@@ -36,6 +36,7 @@ func TestOpenAICompatibleTextTargetAllowsCompositeProviders(t *testing.T) {
 		{model: "k3", platform: service.PlatformKimi},
 		{model: "glm-5.2", platform: service.PlatformZhipu},
 		{model: "deepseek-v3.2", platform: service.PlatformDeepseek},
+		{model: "MiniMax-M3", platform: service.PlatformMiniMax},
 	}
 	for _, path := range []string{"/v1/messages", "/v1/chat/completions", "/v1/responses", "/v1/responses/input_tokens", "/v1/messages/count_tokens"} {
 		for _, provider := range providers {
@@ -57,7 +58,7 @@ func TestResponsesWebSocketCompositePlatformGuardKeepsOpenAIAndGrokOnly(t *testi
 	require.True(t, isResponsesWebSocketCompositePlatform(service.PlatformOpenAI))
 	require.True(t, isResponsesWebSocketCompositePlatform(service.PlatformGrok))
 	for _, platform := range []string{
-		service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek,
+		service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek, service.PlatformMiniMax,
 		service.PlatformAnthropic, service.PlatformGemini,
 	} {
 		require.False(t, isResponsesWebSocketCompositePlatform(platform), "platform=%s", platform)
@@ -133,14 +134,34 @@ func TestOpenAIReasoningEffortPolicyForCompositeTarget(t *testing.T) {
 	require.True(t, changed)
 	require.JSONEq(t, `{"reasoning":{"effort":"medium"}}`, string(bound))
 
-	omittedCtx, _ := gin.CreateTestContext(httptest.NewRecorder())
-	omittedCtx.Request = httptest.NewRequest("POST", "/v1/messages", nil)
-	omittedCtx.Request = omittedCtx.Request.WithContext(service.WithResolvedTargetPlatform(omittedCtx.Request.Context(), service.PlatformOpenAI))
-	bindOpenAIReasoningEffortPolicyForMessagesRequest(omittedCtx, apiKey, []byte(`{"model":"gpt-5"}`))
-	omitted, changed, err := service.ApplyOpenAIReasoningEffortPolicyFromContext(omittedCtx.Request.Context(), body)
-	require.NoError(t, err)
-	require.False(t, changed)
-	require.Equal(t, body, omitted)
+	synthesizedGroup := &service.Group{
+		Platform: service.PlatformComposite,
+		ReasoningEffortMappings: []service.ReasoningEffortMapping{
+			{From: "medium", To: "low"},
+			{From: "none", To: "low"},
+		},
+	}
+	synthesizedAPIKey := &service.APIKey{Group: synthesizedGroup}
+	for _, tc := range []struct {
+		name     string
+		request  string
+		response string
+		want     string
+	}{
+		{name: "default medium", request: `{"model":"gpt-5"}`, response: `{"reasoning":{"effort":"medium"}}`, want: "medium"},
+		{name: "disabled thinking none", request: `{"model":"gpt-5","thinking":{"type":"disabled"}}`, response: `{"reasoning":{"effort":"none"}}`, want: "low"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			omittedCtx, _ := gin.CreateTestContext(httptest.NewRecorder())
+			omittedCtx.Request = httptest.NewRequest("POST", "/v1/messages", nil)
+			omittedCtx.Request = omittedCtx.Request.WithContext(service.WithResolvedTargetPlatform(omittedCtx.Request.Context(), service.PlatformOpenAI))
+			bindOpenAIReasoningEffortPolicyForMessagesRequest(omittedCtx, synthesizedAPIKey, []byte(tc.request))
+			got, changed, err := service.ApplyOpenAIReasoningEffortPolicyFromContext(omittedCtx.Request.Context(), []byte(tc.response))
+			require.NoError(t, err)
+			require.Equal(t, tc.want != "medium", changed)
+			require.Equal(t, tc.want, gjson.GetBytes(got, "reasoning.effort").String())
+		})
+	}
 
 	denyGroup := *group
 	denyGroup.MaxReasoningEffortOverLimit = service.ReasoningEffortOverLimitDeny
@@ -152,6 +173,23 @@ func TestOpenAIReasoningEffortPolicyForCompositeTarget(t *testing.T) {
 	require.Error(t, err)
 	var overLimit *service.ReasoningEffortOverLimitError
 	require.ErrorAs(t, err, &overLimit)
+
+	mappingDenyGroup := *group
+	mappingDenyGroup.MaxReasoningEffort = ""
+	mappingDenyGroup.ReasoningEffortMappings = []service.ReasoningEffortMapping{
+		{From: "max", To: service.ReasoningEffortMappingDeny},
+	}
+	mappingDenyAPIKey := &service.APIKey{Group: &mappingDenyGroup}
+	mappingDenyCtx, _ := gin.CreateTestContext(httptest.NewRecorder())
+	mappingDenyCtx.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+	mappingDenyCtx.Request = mappingDenyCtx.Request.WithContext(service.WithResolvedTargetPlatform(mappingDenyCtx.Request.Context(), service.PlatformOpenAI))
+	_, changed, err = applyOpenAIReasoningEffortPolicyForRequest(mappingDenyCtx, mappingDenyAPIKey, body)
+	require.Error(t, err)
+	require.False(t, changed)
+	var mappingDenied *service.ReasoningEffortMappingDeniedError
+	require.ErrorAs(t, err, &mappingDenied)
+	require.Equal(t, "max", mappingDenied.Requested)
+	require.Contains(t, mappingDenied.Error(), "denied by this group's mapping policy")
 
 	grokCtx, _ := gin.CreateTestContext(httptest.NewRecorder())
 	grokCtx.Request = httptest.NewRequest("POST", "/v1/responses", nil)

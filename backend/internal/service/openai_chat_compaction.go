@@ -259,6 +259,7 @@ func (w *chatBridgeWriter) Write(p []byte) (int, error) {
 }
 
 func (s *OpenAIGatewayService) proxyChatCompletionsWSBridge(ctx context.Context, c *gin.Context, account *Account, payload []byte, writeEvent func([]byte) error) (*OpenAIForwardResult, error) {
+	startTime := time.Now()
 	// Reuse the last declaration when an incremental WS turn omits tools.
 	if tools := gjson.GetBytes(payload, "tools"); tools.Exists() {
 		c.Set("openai_chat_ws_tools", json.RawMessage(bytes.Clone([]byte(tools.Raw))))
@@ -299,7 +300,7 @@ func (s *OpenAIGatewayService) proxyChatCompletionsWSBridge(ctx context.Context,
 	writer := &chatBridgeWriter{ResponseWriter: c.Writer, header: make(http.Header), status: 200, writeEvent: writeEvent}
 	clone := c.Copy()
 	clone.Writer = writer
-	result, err := s.forwardResponsesViaRawChatCompletions(ctx, clone, account, body)
+	result, err := s.forwardResponsesViaRawChatCompletions(ctx, clone, account, body, startTime)
 	if err == nil {
 		err = writer.err
 	}

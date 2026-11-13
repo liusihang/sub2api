@@ -166,3 +166,71 @@ func TestNormalizeCodexAutomationBootstrapPreservesOrderAndIsIdempotent(t *testi
 	require.False(t, changedAgain)
 	require.Equal(t, got, again)
 }
+
+func TestNormalizeCodexAutomationBootstrapFullHeartbeat(t *testing.T) {
+	const output = `<heartbeat>
+  <automation_id>flutter</automation_id>
+  <current_time_iso>2026-09-09T00:33:34.775Z</current_time_iso>
+  <instructions>
+Read the reference index and report changes. Preserve A &amp; B and &lt;tags&gt;.
+  </instructions>
+</heartbeat>`
+	body := codexAutomationBootstrapBody(t, output, "")
+	got, changed := normalizeCodexAutomationBootstrap(body)
+	require.True(t, changed)
+	require.Equal(t, "user", gjson.GetBytes(got, "input.0.role").String())
+	require.Equal(t, output, gjson.GetBytes(got, "input.0.content.0.text").String())
+	again, changedAgain := normalizeCodexAutomationBootstrap(got)
+	require.False(t, changedAgain)
+	require.Equal(t, got, again)
+
+	for _, field := range []string{"automation_id", "current_time_iso", "instructions"} {
+		duplicate := strings.Replace(output, "</heartbeat>", "<"+field+">duplicate</"+field+"></heartbeat>", 1)
+		require.False(t, validCodexAutomationHeartbeat(duplicate), field)
+	}
+	for _, invalid := range []string{
+		strings.Replace(output, "2026-09-09T00:33:34.775Z", "yesterday", 1),
+		strings.Replace(output, "<current_time_iso>2026-09-09T00:33:34.775Z</current_time_iso>", "", 1),
+		strings.Replace(output, "Read the reference index and report changes. Preserve A &amp; B and &lt;tags&gt;.", " ", 1),
+		strings.Replace(output, "<instructions>", `<instructions source="other">`, 1),
+		strings.Replace(output, "<instructions>", "<instructions><nested/>", 1),
+	} {
+		require.False(t, validCodexAutomationHeartbeat(invalid))
+	}
+	for _, guarded := range [][]byte{
+		codexAutomationBootstrapBody(t, output, `,"call_id":"call-1"`),
+		[]byte(strings.Replace(string(body), `"model":"gpt-5"`, `"model":"gpt-5","previous_response_id":"resp-1"`, 1)),
+		[]byte(strings.Replace(string(body), `"namespace":"codex_app"`, `"namespace":"other"`, 1)),
+	} {
+		unchanged, normalized := normalizeCodexAutomationBootstrap(guarded)
+		require.False(t, normalized)
+		require.Equal(t, guarded, unchanged)
+	}
+}
+
+// The byte precheck must stay a necessary condition: an escaped type or tool
+// name is still a candidate, and a body without either is returned untouched
+// without the token scan and decode.
+func TestNormalizeCodexBootstrapPrecheck(t *testing.T) {
+	output := codexAutomationBootstrap("wiki-maintenance", "never", automationBootstrapPrompt)
+	escaped := []byte(strings.Replace(string(codexAutomationBootstrapBody(t, output, "")), `"automation_update"`, `"\u0061utomation_update"`, 1))
+	got, changed := normalizeCodexAutomationBootstrap(escaped)
+	require.True(t, changed)
+	require.Equal(t, output, gjson.GetBytes(got, "input.0.content.0.text").String())
+
+	plain := []byte(`{"model":"gpt-5","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"` + strings.Repeat("x", 4096) + `"}]},{"type":"function_call_output","call_id":"call_1","output":"ok"}]}`)
+	for name, normalize := range map[string]func([]byte) ([]byte, bool){
+		"automation": normalizeCodexAutomationBootstrap,
+		"delegation": normalizeCodexDelegationBootstrap,
+	} {
+		t.Run(name, func(t *testing.T) {
+			allocs := testing.AllocsPerRun(10, func() {
+				got, changed := normalize(plain)
+				if changed || &got[0] != &plain[0] {
+					t.Fatal("non-candidate body must be returned unchanged")
+				}
+			})
+			require.Zero(t, allocs)
+		})
+	}
+}

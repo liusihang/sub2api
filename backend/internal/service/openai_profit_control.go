@@ -246,7 +246,7 @@ func (s *OpenAIGatewayService) resolveOpenAIProfitControlGate(ctx context.Contex
 		pricingAt = timezone.Now()
 	}
 	// D 与计费完全同源（RecordUsage 组合）：计费永远按 apiKey 自身分组
-	//（composite 请求即父分组）的"用户覆盖 ?? 分组默认 × 高峰因子"计算，
+	//（composite 请求即父分组）的用户/分组倍率，显式 route 倍率覆盖后再叠加高峰因子，
 	// 因此优先取认证中间件放入 ctx 的分组；ctx 中无有效分组（内部调用）时
 	// 退回调度分组组合，直连 openai 分组场景两者等价。
 	billingGroup := group
@@ -257,6 +257,7 @@ func (s *OpenAIGatewayService) resolveOpenAIProfitControlGate(ctx context.Contex
 	if userID, _ := ctx.Value(ctxkey.UserID).(int64); userID > 0 {
 		downstream = s.ResolveUserGroupRateMultiplier(ctx, userID, billingGroup.ID, billingGroup.RateMultiplier)
 	}
+	downstream = effectiveCompositeBillingMultiplier(ctx, &APIKey{Group: billingGroup}, downstream)
 	downstream *= billingGroup.PeakMultiplierAt(pricingAt)
 
 	deduction := group.ProfitMinMargin + group.ProfitSafetyBuffer
