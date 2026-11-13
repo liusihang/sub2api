@@ -19,6 +19,13 @@ import (
 
 // Forward forwards request to OpenAI API
 func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, account *Account, body []byte) (*OpenAIForwardResult, error) {
+	account = tongjiKimiChatCompatibilityAccount(account, gjson.GetBytes(body, "model").String())
+	expandedBody, expansionErr := s.expandChatCompactionInputs(body)
+	if expansionErr != nil {
+		writeOpenAIResponsesFallbackError(c, 400, "invalid_compaction", expansionErr.Error())
+		return nil, expansionErr
+	}
+	body = expandedBody
 	beginUpstreamResponseModelObservation(c)
 	ClearActualOpenAIUpstreamEndpoint(c)
 	if shouldForwardOpenAIResponsesViaRawChatCompletions(account) {

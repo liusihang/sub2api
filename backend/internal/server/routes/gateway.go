@@ -537,6 +537,9 @@ func compositeTargetPlatformMiddleware(resolver *service.CompositeRouteResolver)
 			return
 		}
 		if c.Request == nil || c.Request.Method == http.MethodGet {
+			if c.Request != nil {
+				c.Request = c.Request.WithContext(service.WithDeferredCompositeRouteResolver(c.Request.Context(), resolver))
+			}
 			c.Next()
 			return
 		}

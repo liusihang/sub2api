@@ -26,6 +26,14 @@ func (s *OpenAIGatewayService) forwardResponsesViaRawChatCompletions(
 	body []byte,
 ) (*OpenAIForwardResult, error) {
 	startTime := time.Now()
+	compact := account.IsOpenAIChatCompactionEnabled() && (HasCompactionTriggerInInput(body) || isOpenAIResponsesCompactPath(c))
+	if compact {
+		prepared, err := prepareChatCompactionRequest(body)
+		if err != nil {
+			return nil, err
+		}
+		body = prepared
+	}
 
 	var responsesReq apicompat.ResponsesRequest
 	if err := json.Unmarshal(body, &responsesReq); err != nil {
@@ -71,7 +79,11 @@ func (s *OpenAIGatewayService) forwardResponsesViaRawChatCompletions(
 	// 国产模型默认 effort 补充：需要 mappedModel 判定，推迟到 billingModel 算出之后。
 	reasoningEffort = ApplyThinkingEnabledFallback(reasoningEffort, body, billingModel)
 	chatReq.Model = upstreamModel
-	if clientStream {
+	if compact {
+		chatReq.Stream = false
+		chatReq.StreamOptions = nil
+	}
+	if clientStream && !compact {
 		chatReq.StreamOptions = &apicompat.ChatStreamOptions{IncludeUsage: true}
 	}
 
@@ -117,6 +129,10 @@ func (s *OpenAIGatewayService) forwardResponsesViaRawChatCompletions(
 			return nil, foErr
 		}
 		return s.handleErrorResponse(ctx, resp, c, account, chatBody, billingModel)
+	}
+
+	if compact {
+		return s.finishChatCompaction(c, resp, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, clientStream, startTime)
 	}
 
 	if clientStream {

@@ -17,6 +17,7 @@ import (
 	coderws "github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 type openAIWSClientFrameConn struct {
@@ -29,6 +30,10 @@ type openAIWSClientFrameConn struct {
 	// model identifier they supplied for the current turn.
 	restoreResponseModel func([]byte) []byte
 	restoreToolNames     func([]byte) []byte
+	// rewriteClientPayload may replace an upstream error message immediately
+	// before it is written to the client. Monitoring and relay lifecycle hooks
+	// still observe the original upstream payload.
+	rewriteClientPayload func([]byte) []byte
 }
 
 // openAIWSPolicyEnforcingFrameConn wraps a client-side FrameConn and runs
@@ -650,8 +655,46 @@ func (c *openAIWSClientFrameConn) WriteFrame(ctx context.Context, msgType coderw
 		if c.restoreToolNames != nil {
 			payload = c.restoreToolNames(payload)
 		}
+		if c.rewriteClientPayload != nil {
+			payload = c.rewriteClientPayload(payload)
+		}
 	}
 	return c.conn.Write(ctx, msgType, payload)
+}
+
+// rewriteOpenAIWSPassthroughClientPayload applies configured error passthrough
+// rules to Responses WebSocket error frames. It only replaces the error message;
+// the event type, error code, and other fields remain unchanged so clients keep
+// receiving a terminal error rather than a normal assistant response.
+func rewriteOpenAIWSPassthroughClientPayload(c *gin.Context, platform string, payload []byte) []byte {
+	if len(payload) == 0 || !gjson.ValidBytes(payload) {
+		return payload
+	}
+	eventType, _, _ := parseOpenAIWSEventEnvelope(payload)
+	if eventType != "error" && eventType != "response.failed" {
+		return payload
+	}
+
+	failedMessage := extractOpenAISSEErrorMessage(payload)
+	_, _, message, matched := applyOpenAIStreamFailedErrorPassthroughRule(c, platform, payload, failedMessage)
+	if !matched || strings.TrimSpace(message) == "" {
+		return payload
+	}
+
+	messagePath := ""
+	switch {
+	case gjson.GetBytes(payload, "error.message").Exists():
+		messagePath = "error.message"
+	case gjson.GetBytes(payload, "response.error.message").Exists():
+		messagePath = "response.error.message"
+	default:
+		return payload
+	}
+	updated, err := sjson.SetBytes(payload, messagePath, message)
+	if err != nil {
+		return payload
+	}
+	return updated
 }
 
 func (c *openAIWSClientFrameConn) Close() error {
@@ -696,6 +739,11 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 		firstClientMessage = liteFirstMessage
 	}
 	originalFirstClientMessage := firstClientMessage
+	expandedFirst, expansionErr := s.expandChatCompactionInputs(firstClientMessage)
+	if expansionErr != nil {
+		return expansionErr
+	}
+	firstClientMessage = expandedFirst
 	if next, policyErr := applyOpenAIWSReasoningEffortPolicy(firstClientMessage, hooks); policyErr != nil {
 		return NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, policyErr.Error(), policyErr)
 	} else {
@@ -969,6 +1017,9 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 		restoreToolNames: func(payload []byte) []byte {
 			return restoreCodexToolNamesFromContext(c, payload)
 		},
+		rewriteClientPayload: func(payload []byte) []byte {
+			return rewriteOpenAIWSPassthroughClientPayload(c, account.Platform, payload)
+		},
 	}
 	policyClientConn := &openAIWSPolicyEnforcingFrameConn{
 		inner: clientFrameConn,
@@ -977,6 +1028,11 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 		// capturedSessionModel 的读写都发生在该 goroutine 内，因此无需
 		// 加锁/原子化。
 		filter: func(msgType coderws.MessageType, payload []byte) (out []byte, blocked *OpenAIFastBlockedError, filterErr error) {
+			expanded, expansionErr := s.expandChatCompactionInputs(payload)
+			if expansionErr != nil {
+				return nil, nil, expansionErr
+			}
+			payload = expanded
 			if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
 				return payload, nil, nil
 			}

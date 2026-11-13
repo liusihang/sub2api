@@ -104,6 +104,8 @@ const (
 	// credentials["openai_capabilities"] 配置集。仅用于生图意图的 /v1/responses
 	// 调度，避免把请求调度到会在 forward 阶段被降级为 Chat Completions 的账号（#4417）。
 	OpenAIEndpointCapabilityResponses OpenAIEndpointCapability = "responses"
+	// Compaction accepts native Responses or an explicitly enabled gateway summary bridge.
+	OpenAIEndpointCapabilityCompaction OpenAIEndpointCapability = "responses_compaction"
 )
 
 const openAIEndpointCapabilitiesCredentialKey = "openai_capabilities"
@@ -1779,6 +1781,12 @@ func (a *Account) SupportsOpenAIEndpointCapability(capability OpenAIEndpointCapa
 	}
 	if !a.IsOpenAICompatible() {
 		return false
+	}
+	if capability == OpenAIEndpointCapabilityCompaction {
+		if a.IsOpenAIChatCompactionEnabled() {
+			return a.SupportsOpenAIEndpointCapability(OpenAIEndpointCapabilityChatCompletions)
+		}
+		return a.SupportsOpenAIEndpointCapability(OpenAIEndpointCapabilityResponses)
 	}
 	if a.IsGrok() {
 		switch capability {

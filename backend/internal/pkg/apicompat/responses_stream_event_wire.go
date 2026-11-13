@@ -175,6 +175,8 @@ func responsesItemWire(item *ResponsesOutput) map[string]any {
 		}
 		m["role"] = role
 		m["content"] = messageContentWire(item.Content)
+	case "compaction":
+		m["encrypted_content"] = item.EncryptedContent
 	case "reasoning":
 		m["summary"] = reasoningSummaryWire(item.Summary)
 		if item.EncryptedContent != "" {

@@ -252,3 +252,23 @@ func isConcreteRequestPlatform(platform string) bool {
 		return false
 	}
 }
+
+// deferredCompositeRouteResolverKey carries the existing route resolver across
+// a WebSocket upgrade, before the first frame supplies the model identifier.
+type deferredCompositeRouteResolverKey struct{}
+
+func WithDeferredCompositeRouteResolver(ctx context.Context, resolver *CompositeRouteResolver) context.Context {
+	return context.WithValue(ctx, deferredCompositeRouteResolverKey{}, resolver)
+}
+
+func ResolveDeferredCompositeRoute(ctx context.Context, groupID int64, model, endpoint string) (context.Context, error) {
+	resolver, _ := ctx.Value(deferredCompositeRouteResolverKey{}).(*CompositeRouteResolver)
+	if resolver == nil {
+		return ctx, nil
+	}
+	decision, err := resolver.Resolve(ctx, groupID, model, endpoint)
+	if err != nil {
+		return ctx, err
+	}
+	return WithCompositeRouteDecision(ctx, decision), nil
+}

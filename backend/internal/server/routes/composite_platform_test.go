@@ -312,3 +312,30 @@ func TestCompositeGeminiTargetPlatformMiddlewareUsesPathRoute(t *testing.T) {
 
 	require.Equal(t, http.StatusNoContent, w.Code)
 }
+
+func TestGeneralOAIWebSocketDeferredCompositeRoute(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	rate := 0.0001
+	resolver := service.NewCompositeRouteResolver(compositeRouteRepoStub{routes: []service.CompositeModelRoute{{GroupID: 18, PublicModel: "DeepSeek-V4.1-Flash", MatchType: service.CompositeRouteMatchExact, TargetPlatform: service.PlatformOpenAI, UpstreamModel: "DeepSeek-V4.1-Flash", Endpoint: service.CompositeRouteEndpointAny, Enabled: true, BillingRateMultiplier: &rate}}})
+	router := gin.New()
+	router.Use(gin.HandlerFunc(servermiddleware.APIKeyAuthMiddleware(func(c *gin.Context) {
+		gid := int64(18)
+		c.Set(string(servermiddleware.ContextKeyAPIKey), &service.APIKey{GroupID: &gid, Group: &service.Group{ID: gid, Platform: service.PlatformComposite}})
+		c.Next()
+	})))
+	router.Use(compositeTargetPlatformMiddleware(resolver))
+	router.GET("/v1/responses", func(c *gin.Context) {
+		ctx, err := service.ResolveDeferredCompositeRoute(c.Request.Context(), 18, "DeepSeek-V4.1-Flash", service.CompositeRouteEndpointResponses)
+		require.NoError(t, err)
+		platform, ok := service.ResolvedTargetPlatformFromContext(ctx)
+		require.True(t, ok)
+		require.Equal(t, service.PlatformOpenAI, platform)
+		multiplier, ok := service.CompositeRouteBillingRateMultiplierFromContext(ctx)
+		require.True(t, ok)
+		require.Equal(t, 0.0001, multiplier)
+		c.Status(204)
+	})
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/responses", nil))
+	require.Equal(t, 204, rec.Code)
+}
