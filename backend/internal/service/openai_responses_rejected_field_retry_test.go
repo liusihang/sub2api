@@ -538,7 +538,7 @@ func TestOpenAIGatewayService_APIKeyStripsAllIndexedNamespacesBeforeFirstForward
 	require.False(t, gjson.GetBytes(upstream.bodies[0], "input.1.namespace").Exists())
 }
 
-func TestOpenAIGatewayServiceProactivelyStripsCrossProviderReasoningContent(t *testing.T) {
+func TestOpenAIGatewayServiceProactivelyStripsCrossProviderReasoningContentForOfficialEndpoint(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.5","stream":false,"store":true,"input":[` +
 		`{"type":"message","role":"user","content":"one"},` +
 		`{"type":"message","role":"assistant","content":"two"},` +
@@ -551,10 +551,13 @@ func TestOpenAIGatewayServiceProactivelyStripsCrossProviderReasoningContent(t *t
 		newOpenAIRejectedFieldTestResponse(http.StatusOK, `{"output":[],"usage":{"input_tokens":1,"output_tokens":1,"input_tokens_details":{"cached_tokens":0}}}`),
 	}}
 
+	account := newOpenAIRejectedFieldTestAccount()
+	account.Credentials["base_url"] = "https://api.openai.com/v1"
+
 	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(
 		context.Background(),
 		newOpenAIRejectedFieldTestContext(body),
-		newOpenAIRejectedFieldTestAccount(),
+		account,
 		body,
 	)
 
