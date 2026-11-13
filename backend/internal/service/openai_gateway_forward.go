@@ -34,7 +34,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	body = expandedBody
 	beginUpstreamResponseModelObservation(c)
 	ClearActualOpenAIUpstreamEndpoint(c)
-	if shouldForwardOpenAIResponsesViaRawChatCompletions(account) {
+	if shouldForwardOpenAIResponsesViaRawChatCompletions(account) || shouldUseGatewayChatCompaction(account, body, isOpenAIResponsesCompactPath(c)) {
 		SetActualOpenAIUpstreamEndpoint(c, "/v1/chat/completions")
 	}
 	filteredBody, filterErr := filterOpenAIResponsesNoneReasoningEffortForAccount(account, body)
@@ -196,6 +196,9 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	routingModel := upstreamRoutingModel(account, body, "")
 	if account.IsOpenCodeGo() && IsOpenCodeUnsupportedModel(routingModel) {
 		return nil, writeOpenCodeUnsupportedModelError(c, false, routingModel)
+	}
+	if shouldUseGatewayChatCompaction(account, body, isOpenAIResponsesCompactPath(c)) {
+		return s.forwardResponsesViaRawChatCompletions(ctx, c, account, body, startTime)
 	}
 	switch s.resolveUpstreamProtocolFor(ctx, account, APIProtocolResponses, routingModel) {
 	case APIProtocolAnthropic:

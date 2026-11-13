@@ -448,7 +448,7 @@ func (s *OpenAIGatewayService) proxyOpenAIWSHTTPBridgeTurn(
 		return nil, errors.New("client websocket writer is nil")
 	}
 	account = tongjiKimiChatCompatibilityAccount(account, gjson.GetBytes(payload, "model").String())
-	if shouldForwardOpenAIResponsesViaRawChatCompletions(account) {
+	if shouldForwardOpenAIResponsesViaRawChatCompletions(account) || shouldUseGatewayChatCompaction(account, payload, false) {
 		return s.proxyChatCompletionsWSBridge(ctx, c, account, payload, writeClientMessage)
 	}
 	responseModelObserver := &upstreamResponseModelObserver{}
