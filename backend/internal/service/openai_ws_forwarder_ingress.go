@@ -723,6 +723,25 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 			if result == nil {
 				return errors.New("websocket http bridge turn result is nil")
 			}
+			// Save output in the same replay shape used by incoming client frames.
+			// Otherwise ID/reasoning cleanup makes a full client window differ from
+			// our cached prefix, and the next turn appends the entire history twice.
+			if result.wsReplayInputExists {
+				replayPayload, replayErr := setOpenAIWSPayloadInputSequence(currentBridgePayload.payloadRaw, result.wsReplayInput, true)
+				if replayErr != nil {
+					return fmt.Errorf("encode websocket http bridge output history: %w", replayErr)
+				}
+				replayPayload, _, replayErr = normalizeOpenAIResponsesWebSocketCompatibilityBodyWithConfig(s.cfg, replayPayload, account, isOpenAIResponsesLiteWebSocketPayload(replayPayload))
+				if replayErr != nil {
+					return fmt.Errorf("normalize websocket http bridge output history: %w", replayErr)
+				}
+				outputItems, _, replayErr := openAIWSExtractNormalizedInputSequence(replayPayload)
+				if replayErr != nil {
+					return fmt.Errorf("decode websocket http bridge output history: %w", replayErr)
+				}
+				result.wsReplayInput = outputItems
+				result.wsAccountFailoverReplayInput = outputItems
+			}
 			// turnReplayInput/turnAccountFailoverInput 可能共享同一头数组（转移自
 			// bridgeCurrentItems），保存历史必须经 combine 新建头，禁止就地 append。
 			bridgeReplayInput = turnReplayInput

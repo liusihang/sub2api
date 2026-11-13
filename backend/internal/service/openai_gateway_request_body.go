@@ -668,6 +668,14 @@ func openAIRequestBodyHasTools(body []byte) bool {
 	return false
 }
 
+// OpenAI-protocol API-key accounts also serve third-party Responses endpoints.
+// Their visible reasoning is provider state, not an OpenAI replay error. Only
+// apply OpenAI-specific reasoning cleanup to official targets and OAuth flows.
+func shouldNormalizeOpenAIResponsesReasoningReplay(account *Account) bool {
+	return account != nil && account.IsOpenAI() &&
+		(!account.IsOpenAIApiKey() || isOfficialOpenAIModelsBaseURL(account.GetOpenAIBaseURL()))
+}
+
 // normalizeOpenAIResponsesReasoningContentReplay removes non-portable
 // reasoning.content arrays before history is sent to a real OpenAI Responses
 // endpoint. Compatible providers may return visible reasoning blocks there,
@@ -1623,11 +1631,13 @@ func normalizeOpenAIResponsesCompatibilityBodyWithOptions(body []byte, account *
 			return body, false, err
 		}
 	}
-	if next, normalizedReasoningContent, err := normalizeOpenAIResponsesReasoningContentReplay(normalized); err != nil {
-		return body, false, err
-	} else if normalizedReasoningContent {
-		normalized = next
-		changed = true
+	if shouldNormalizeOpenAIResponsesReasoningReplay(account) {
+		if next, normalizedReasoningContent, err := normalizeOpenAIResponsesReasoningContentReplay(normalized); err != nil {
+			return body, false, err
+		} else if normalizedReasoningContent {
+			normalized = next
+			changed = true
+		}
 	}
 	if account.IsOpenAIApiKey() {
 		if next, normalizedParallel, err := normalizeOpenAIParallelToolCallsWithoutTools(normalized, responsesLite); err != nil {
@@ -1636,11 +1646,13 @@ func normalizeOpenAIResponsesCompatibilityBodyWithOptions(body []byte, account *
 			normalized = next
 			changed = true
 		}
-		if next, normalizedReasoning, err := normalizeOpenAIAPIKeyStoreFalseReasoningReplay(normalized, false); err != nil {
-			return body, false, err
-		} else if normalizedReasoning {
-			normalized = next
-			changed = true
+		if shouldNormalizeOpenAIResponsesReasoningReplay(account) {
+			if next, normalizedReasoning, err := normalizeOpenAIAPIKeyStoreFalseReasoningReplay(normalized, false); err != nil {
+				return body, false, err
+			} else if normalizedReasoning {
+				normalized = next
+				changed = true
+			}
 		}
 	}
 	if sanitized, idsChanged, err := sanitizeOpenAIResponsesInputItemIDs(normalized); err != nil {

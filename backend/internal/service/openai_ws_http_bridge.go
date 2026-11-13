@@ -280,6 +280,14 @@ func (c *openAIWSToolCallReplayCollector) AddEvent(eventType string, message []b
 		if !output.IsArray() {
 			return
 		}
+		// A nonempty terminal output is the authoritative ordered snapshot.
+		// Item-done events can arrive in completion order, and their copies may
+		// omit fields only present in the final response. Keep streamed items
+		// when a compatible upstream omits the terminal output or returns [].
+		if len(output.Array()) > 0 {
+			c.allItems = nil
+			c.allSeen = nil
+		}
 		for _, item := range output.Array() {
 			c.addAllItem(item)
 			c.addItem(item)
@@ -713,7 +721,10 @@ func (s *OpenAIGatewayService) proxyOpenAIWSHTTPBridgeTurn(
 			Duration:                      time.Since(turnStart),
 			FirstTokenMs:                  firstTokenMs,
 		}
-		if replayInput := replayCollector.Items(); len(replayInput) > 0 {
+		// This bridge removes previous_response_id before calling a stateless
+		// HTTP upstream, so it must replay every output item, including assistant
+		// progress and reasoning. Tool-only replay loses state after Insert.
+		if replayInput := replayCollector.AllItems(); len(replayInput) > 0 {
 			result.wsReplayInput = replayInput
 			result.wsReplayInputExists = true
 		}
